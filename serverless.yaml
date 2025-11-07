@@ -1,0 +1,132 @@
+org: geraldocolchado
+service: chinawok-api
+
+frameworkVersion: '3'   # o 4 si ya lo usas
+useDotenv: false
+
+provider:
+  name: aws
+  runtime: python3.12
+  stage: dev
+  region: us-east-1
+  timeout: 30
+  memorySize: 256
+  iam:
+    role: arn:aws:iam::498917627164:role/LabRole   # usas tu rol existente
+  environment:
+    LOCAL_TABLE: chinawok_local
+    INVENTARIO_TABLE: chinawok_inventario
+
+# Si tu rol no tiene permisos DynamoDB, en vez de "iam.role" puedes usar:
+# iamRoleStatements:
+#   - Effect: Allow
+#     Action:
+#       - dynamodb:PutItem
+#       - dynamodb:GetItem
+#       - dynamodb:UpdateItem
+#       - dynamodb:DeleteItem
+#       - dynamodb:Scan
+#     Resource:
+#       - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/chinawok_local
+#       - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/chinawok_inventario
+
+functions:
+  # -------- LOCAL --------
+  localListar:
+    handler: local/ListarLocales.lambda_handler
+    events:
+      - http:
+          path: /local/listar
+          method: get
+          cors: true
+  localCrear:
+    handler: local/CrearLocal.lambda_handler
+    events:
+      - http:
+          path: /local/crear
+          method: post
+          cors: true
+  localObtener:
+    handler: local/ObtenerLocal.lambda_handler
+    events:
+      - http:
+          path: /local/obtener/{id}
+          method: get
+          cors: true
+  localActualizar:
+    handler: local/ActualizarLocal.lambda_handler
+    events:
+      - http:
+          path: /local/actualizar/{id}
+          method: put
+          cors: true
+  localEliminar:
+    handler: local/EliminarLocal.lambda_handler
+    events:
+      - http:
+          path: /local/eliminar/{id}
+          method: delete
+          cors: true
+
+  # ----- INVENTARIO -----
+  invListar:
+    handler: inventario/ListarProductos.lambda_handler
+    events:
+      - http:
+          path: /inventario/listar
+          method: get
+          cors: true
+  invCrear:
+    handler: inventario/CrearProducto.lambda_handler
+    events:
+      - http:
+          path: /inventario/crear
+          method: post
+          cors: true
+  invObtener:
+    handler: inventario/ObtenerProducto.lambda_handler
+    events:
+      - http:
+          path: /inventario/obtener/{sku}
+          method: get
+          cors: true
+  invActualizar:
+    handler: inventario/ActualizarProducto.lambda_handler
+    events:
+      - http:
+          path: /inventario/actualizar/{sku}
+          method: put
+          cors: true
+  invEliminar:
+    handler: inventario/EliminarProducto.lambda_handler
+    events:
+      - http:
+          path: /inventario/eliminar/{sku}
+          method: delete
+          cors: true
+
+resources:
+  Resources:
+    LocalTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: chinawok_local
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+
+    InventarioTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: chinawok_inventario
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: sku
+            AttributeType: S
+        KeySchema:
+          - AttributeName: sku
+            KeyType: HASH

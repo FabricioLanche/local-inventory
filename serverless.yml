@@ -16,35 +16,35 @@ provider:
 functions:
   # -------- LOCAL --------
   localListar:
-    handler: local/getLocales.lambda_handler
+    handler: getLocales.lambda_handler
     events:
       - http:
           path: /local/listar
           method: get
           cors: true
   localCrear:
-    handler: local/crearLocal.lambda_handler
+    handler: crearLocal.lambda_handler
     events:
       - http:
           path: /local/crear
           method: post
           cors: true
   localObtener:
-    handler: local/getLocalById.lambda_handler
+    handler: getLocalById.lambda_handler
     events:
       - http:
           path: /local/obtener/{id}
           method: get
           cors: true
   localActualizar:
-    handler: local/editarLocal.lambda_handler
+    handler: editarLocal.lambda_handler
     events:
       - http:
           path: /local/actualizar/{id}
           method: put
           cors: true
   localEliminar:
-    handler: local/eliminarLocal.lambda_handler
+    handler: eliminarLocal.lambda_handler
     events:
       - http:
           path: /local/eliminar/{id}

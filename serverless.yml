@@ -1,4 +1,4 @@
-org: geraldocolchado
+org: graciamendoza
 service: chinawok-api
 
 frameworkVersion: '3'   # o 4 si ya lo usas
@@ -12,7 +12,7 @@ provider:
   timeout: 30
   memorySize: 256
   iam:
-    role: arn:aws:iam::498917627164:role/LabRole   # usas tu rol existente
+    role: arn:aws:iam::645888963933:role/LabRole   # usas tu rol existente
   environment:
     LOCAL_TABLE: chinawok_local
     INVENTARIO_TABLE: chinawok_inventario

@@ -1,34 +1,18 @@
 org: graciamendoza
 service: chinawok-api
 
-frameworkVersion: '3'   # o 4 si ya lo usas
-useDotenv: false
 
 provider:
   name: aws
-  runtime: python3.12
+  runtime: python3.13
   stage: dev
-  region: us-east-1
-  timeout: 30
+  timeout: 20
   memorySize: 256
   iam:
     role: arn:aws:iam::645888963933:role/LabRole   # usas tu rol existente
   environment:
     LOCAL_TABLE: chinawok_local
     INVENTARIO_TABLE: chinawok_inventario
-
-# Si tu rol no tiene permisos DynamoDB, en vez de "iam.role" puedes usar:
-# iamRoleStatements:
-#   - Effect: Allow
-#     Action:
-#       - dynamodb:PutItem
-#       - dynamodb:GetItem
-#       - dynamodb:UpdateItem
-#       - dynamodb:DeleteItem
-#       - dynamodb:Scan
-#     Resource:
-#       - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/chinawok_local
-#       - arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/chinawok_inventario
 
 functions:
   # -------- LOCAL --------
@@ -68,43 +52,6 @@ functions:
           method: delete
           cors: true
 
-  # ----- INVENTARIO -----
-  invListar:
-    handler: inventario/ListarProductos.lambda_handler
-    events:
-      - http:
-          path: /inventario/listar
-          method: get
-          cors: true
-  invCrear:
-    handler: inventario/CrearProducto.lambda_handler
-    events:
-      - http:
-          path: /inventario/crear
-          method: post
-          cors: true
-  invObtener:
-    handler: inventario/ObtenerProducto.lambda_handler
-    events:
-      - http:
-          path: /inventario/obtener/{sku}
-          method: get
-          cors: true
-  invActualizar:
-    handler: inventario/ActualizarProducto.lambda_handler
-    events:
-      - http:
-          path: /inventario/actualizar/{sku}
-          method: put
-          cors: true
-  invEliminar:
-    handler: inventario/EliminarProducto.lambda_handler
-    events:
-      - http:
-          path: /inventario/eliminar/{sku}
-          method: delete
-          cors: true
-
 resources:
   Resources:
     LocalTable:
@@ -119,14 +66,4 @@ resources:
           - AttributeName: id
             KeyType: HASH
 
-    InventarioTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: chinawok_inventario
-        BillingMode: PAY_PER_REQUEST
-        AttributeDefinitions:
-          - AttributeName: sku
-            AttributeType: S
-        KeySchema:
-          - AttributeName: sku
-            KeyType: HASH
+    

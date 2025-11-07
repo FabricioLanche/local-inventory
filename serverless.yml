@@ -12,40 +12,39 @@ provider:
     role: arn:aws:iam::645888963933:role/LabRole   # usas tu rol existente
   environment:
     LOCAL_TABLE: chinawok_local
-    INVENTARIO_TABLE: chinawok_inventario
 
 functions:
   # -------- LOCAL --------
   localListar:
-    handler: local/ListarLocales.lambda_handler
+    handler: local/getLocales.lambda_handler
     events:
       - http:
           path: /local/listar
           method: get
           cors: true
   localCrear:
-    handler: local/CrearLocal.lambda_handler
+    handler: local/crearLocal.lambda_handler
     events:
       - http:
           path: /local/crear
           method: post
           cors: true
   localObtener:
-    handler: local/ObtenerLocal.lambda_handler
+    handler: local/getLocalById.lambda_handler
     events:
       - http:
           path: /local/obtener/{id}
           method: get
           cors: true
   localActualizar:
-    handler: local/ActualizarLocal.lambda_handler
+    handler: local/editarLocal.lambda_handler
     events:
       - http:
           path: /local/actualizar/{id}
           method: put
           cors: true
   localEliminar:
-    handler: local/EliminarLocal.lambda_handler
+    handler: local/eliminarLocal.lambda_handler
     events:
       - http:
           path: /local/eliminar/{id}

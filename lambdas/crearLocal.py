@@ -71,10 +71,11 @@ def lambda_handler(event, context):
 
         # Verificar tabla
         _ = table_locales.table_status
+        logger.info(f"Key schema de tabla locales: {table_locales.key_schema}")
 
-        # Construir item (ID siempre generado automáticamente)
+        # Construir item (local_id siempre generado automáticamente con UUID)
         item = {
-            "id": str(uuid.uuid4()),
+            "local_id": str(uuid.uuid4()),
             "direccion": direccion,
             "telefono": telefono,
             "hora_apertura": hora_apertura,
@@ -89,6 +90,7 @@ def lambda_handler(event, context):
         # Quitar None para dejar el item limpio
         item = _prune_nones(item)
 
+        logger.info(f"Creando local con local_id: {item.get('local_id')}")
         table_locales.put_item(Item=item)
         return _resp(201, item)
 

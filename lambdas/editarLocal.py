@@ -1,4 +1,7 @@
-import os, json, boto3
+import os, json, boto3, logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 dynamodb = boto3.resource('dynamodb')
 table_locales = dynamodb.Table(os.environ.get('TABLE_LOCALES', 'ChinaWok-Locales'))
@@ -6,10 +9,13 @@ table_usuarios = dynamodb.Table(os.environ.get('TABLE_USUARIOS', 'ChinaWok-Usuar
 
 def lambda_handler(event, context):
     try:
-        # Path param (este es el ID del local)
-        _id = event.get('pathParameters', {}).get('id')
-        if not _id:
-            return _resp(400, {"message": "Falta path parameter 'id'."})
+        # Path param (este es el local_id del local)
+        local_id = event.get('pathParameters', {}).get('local_id')
+        if not local_id:
+            return _resp(400, {"message": "Falta path parameter 'local_id'."})
+
+        logger.info(f"Actualizando local con local_id: {local_id}")
+        logger.info(f"Key schema: {table_locales.key_schema}")
 
         # Body seguro (string o dict)
         body_raw = event.get("body")
@@ -64,7 +70,7 @@ def lambda_handler(event, context):
             expr_vals[val_key] = value
             set_clauses.append(f"{name_ref} = {val_key}")
 
-        # Campos de primer nivel (eliminamos local_id del body)
+        # Campos de primer nivel (local_id NO se actualiza, es la clave)
         for k in ["direccion", "telefono", "hora_apertura", "hora_finalizacion"]:
             if k in body and body[k] is not None:
                 set_attr([k], body[k])
@@ -80,7 +86,7 @@ def lambda_handler(event, context):
 
         # Ejecutar update
         resp = table_locales.update_item(
-            Key={"id": _id},
+            Key={"local_id": local_id},
             UpdateExpression="SET " + ", ".join(set_clauses),
             ExpressionAttributeValues=expr_vals,
             ExpressionAttributeNames=expr_names,

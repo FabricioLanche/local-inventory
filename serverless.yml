@@ -34,21 +34,21 @@ functions:
     handler: lambdas/getLocalById.lambda_handler
     events:
       - http:
-          path: /local/obtener/{id}
+          path: /local/obtener/{local_id}
           method: get
           cors: true
   localActualizar:
     handler: lambdas/editarLocal.lambda_handler
     events:
       - http:
-          path: /local/actualizar/{id}
+          path: /local/actualizar/{local_id}
           method: put
           cors: true
   localEliminar:
     handler: lambdas/eliminarLocal.lambda_handler
     events:
       - http:
-          path: /local/eliminar/{id}
+          path: /local/eliminar/{local_id}
           method: delete
           cors: true
 

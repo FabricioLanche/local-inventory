@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TABLE = os.environ.get("LOCAL_TABLE", "chinawok_local")
+TABLE = os.environ.get("TABLE_LOCALES", "ChinaWok-Locales")
 dynamodb = boto3.resource("dynamodb")
 table = dynamodb.Table(TABLE)
 

@@ -1,7 +1,7 @@
 import os, json, boto3
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ['LOCAL_TABLE'])
+table = dynamodb.Table(os.environ.get('TABLE_LOCALES', 'ChinaWok-Locales'))
 
 def lambda_handler(event, context):
     try:

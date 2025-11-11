@@ -1,4 +1,4 @@
-org: graciamendoza
+org: flanche
 service: chinawok-api
 
 
@@ -11,40 +11,40 @@ provider:
   iam:
     role: arn:aws:iam::645888963933:role/LabRole   # usas tu rol existente
   environment:
-    LOCAL_TABLE: chinawok_local
+    TABLE_LOCALES: ChinaWok-Locales
 
 functions:
   # -------- LOCAL --------
   localListar:
-    handler: getLocales.lambda_handler
+    handler: lambdas/getLocales.lambda_handler
     events:
       - http:
           path: /local/listar
           method: get
           cors: true
   localCrear:
-    handler: crearLocal.lambda_handler
+    handler: lambdas/crearLocal.lambda_handler
     events:
       - http:
           path: /local/crear
           method: post
           cors: true
   localObtener:
-    handler: getLocalById.lambda_handler
+    handler: lambdas/getLocalById.lambda_handler
     events:
       - http:
           path: /local/obtener/{id}
           method: get
           cors: true
   localActualizar:
-    handler: editarLocal.lambda_handler
+    handler: lambdas/editarLocal.lambda_handler
     events:
       - http:
           path: /local/actualizar/{id}
           method: put
           cors: true
   localEliminar:
-    handler: eliminarLocal.lambda_handler
+    handler: lambdas/eliminarLocal.lambda_handler
     events:
       - http:
           path: /local/eliminar/{id}
@@ -56,7 +56,7 @@ resources:
     LocalTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: chinawok_local
+        TableName: ChinaWok-Locales
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: id
@@ -65,4 +65,3 @@ resources:
           - AttributeName: id
             KeyType: HASH
 
-    

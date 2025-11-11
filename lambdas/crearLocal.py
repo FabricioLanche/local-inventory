@@ -67,6 +67,16 @@ def lambda_handler(event, context):
                         "local_id": local_existente.get("local_id")
                     })
             
+            # Si es Cliente, actualizar su rol a Gerente
+            if user_role == "Cliente":
+                logger.info(f"Actualizando rol de Cliente a Gerente para: {correo_gerente}")
+                table_usuarios.update_item(
+                    Key={"correo": correo_gerente},
+                    UpdateExpression="SET #role = :new_role",
+                    ExpressionAttributeNames={"#role": "role"},
+                    ExpressionAttributeValues={":new_role": "Gerente"}
+                )
+            
             # Construir el objeto gerente completo con datos del usuario
             gerente_completo = {
                 "nombre": user.get("nombre"),

@@ -12,6 +12,7 @@ provider:
     role: arn:aws:iam::${env:AWS_ACCOUNT_ID}:role/LabRole
   environment:
     TABLE_LOCALES: ChinaWok-Locales
+    TABLE_USUARIOS: ChinaWok-Usuarios
 
 functions:
   # -------- LOCAL --------

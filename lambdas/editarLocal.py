@@ -1,11 +1,12 @@
 import os, json, boto3
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table(os.environ.get('TABLE_LOCALES', 'ChinaWok-Locales'))
+table_locales = dynamodb.Table(os.environ.get('TABLE_LOCALES', 'ChinaWok-Locales'))
+table_usuarios = dynamodb.Table(os.environ.get('TABLE_USUARIOS', 'ChinaWok-Usuarios'))
 
 def lambda_handler(event, context):
     try:
-        # Path param
+        # Path param (este es el ID del local)
         _id = event.get('pathParameters', {}).get('id')
         if not _id:
             return _resp(400, {"message": "Falta path parameter 'id'."})
@@ -29,6 +30,24 @@ def lambda_handler(event, context):
         gerente = body.get("gerente")
         if isinstance(gerente, dict) and "correo" in gerente and gerente["correo"] is not None:
             gerente["correo"] = str(gerente["correo"]).strip().lower()
+            
+            # Validar que el nuevo gerente existe y tiene rol "Gerente"
+            try:
+                user_resp = table_usuarios.get_item(Key={"correo": gerente["correo"]})
+                user = user_resp.get("Item")
+                
+                if not user:
+                    return _resp(400, {"message": f"El usuario con correo '{gerente['correo']}' no existe."})
+                
+                if user.get("role") != "Gerente":
+                    return _resp(400, {"message": f"El usuario '{gerente['correo']}' no tiene el rol de Gerente."})
+                
+                # Actualizar con información del usuario existente
+                gerente["nombre"] = user.get("nombre")
+                gerente["contrasena"] = user.get("contrasena")
+                
+            except Exception as e:
+                return _resp(500, {"message": "Error al validar el gerente", "error": str(e)})
 
         # Construcción dinámica del UpdateExpression
         set_clauses, expr_vals, expr_names = [], {}, {}
@@ -37,7 +56,6 @@ def lambda_handler(event, context):
             name_parts = []
             # alias seguros para cada token del path
             for i, t in enumerate(path_tokens):
-                # ej: ["gerente","correo"] -> "#n_gerente", "#n_gerente_correo"
                 key = f"#n_{'_'.join(path_tokens[:i+1])}" if len(path_tokens) > 1 else f"#n_{t}"
                 expr_names[key] = t
                 name_parts.append(key)
@@ -46,8 +64,8 @@ def lambda_handler(event, context):
             expr_vals[val_key] = value
             set_clauses.append(f"{name_ref} = {val_key}")
 
-        # Campos de primer nivel
-        for k in ["local_id", "direccion", "telefono", "hora_apertura", "hora_finalizacion"]:
+        # Campos de primer nivel (eliminamos local_id del body)
+        for k in ["direccion", "telefono", "hora_apertura", "hora_finalizacion"]:
             if k in body and body[k] is not None:
                 set_attr([k], body[k])
 
@@ -60,8 +78,8 @@ def lambda_handler(event, context):
         if not set_clauses:
             return _resp(400, {"message": "Nada que actualizar"})
 
-        # Ejecutar update (sin alias sobrantes)
-        resp = table.update_item(
+        # Ejecutar update
+        resp = table_locales.update_item(
             Key={"id": _id},
             UpdateExpression="SET " + ", ".join(set_clauses),
             ExpressionAttributeValues=expr_vals,
@@ -72,7 +90,6 @@ def lambda_handler(event, context):
         return _resp(200, {"message": "Local actualizado", "updated": resp.get("Attributes")})
 
     except Exception as e:
-        # Devuelve el error para diagnosticar rápidamente (ajusta en prod)
         return _resp(500, {"message": "Error interno", "error": str(e)})
 
 def _resp(status, body):

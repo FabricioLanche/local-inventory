@@ -7,9 +7,11 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TABLE = os.environ.get("TABLE_LOCALES", "ChinaWok-Locales")
+TABLE_LOCALES = os.environ.get("TABLE_LOCALES", "ChinaWok-Locales")
+TABLE_USUARIOS = os.environ.get("TABLE_USUARIOS", "ChinaWok-Usuarios")
 dynamodb = boto3.resource("dynamodb")
-table = dynamodb.Table(TABLE)
+table_locales = dynamodb.Table(TABLE_LOCALES)
+table_usuarios = dynamodb.Table(TABLE_USUARIOS)
 
 def lambda_handler(event, context):
     try:
@@ -27,12 +29,10 @@ def lambda_handler(event, context):
         logger.info("Event (masked body): %s", json.dumps({**event, "body": body_for_log})[:2000])
 
         # Extraer campos esperados
-        # NOTA: id SIEMPRE se genera; no se usa body['local_id'] para id
         direccion = body.get("direccion")
         telefono = body.get("telefono")
         hora_apertura = body.get("hora_apertura")
         hora_finalizacion = body.get("hora_finalizacion")
-        local_id_opt = body.get("local_id")  # opcional, se guarda como campo aparte
 
         gerente = body.get("gerente") or {}
         gerente_nombre = (gerente.get("nombre") if isinstance(gerente, dict) else None)
@@ -49,13 +49,32 @@ def lambda_handler(event, context):
         if gerente_correo:
             gerente_correo = str(gerente_correo).strip().lower()
 
-        # Verificar tabla
-        _ = table.table_status
+        # Validar que el gerente existe en tabla de usuarios con rol "Gerente"
+        if gerente_correo:
+            try:
+                user_resp = table_usuarios.get_item(Key={"correo": gerente_correo})
+                user = user_resp.get("Item")
+                
+                if not user:
+                    return _resp(400, {"message": f"El usuario con correo '{gerente_correo}' no existe."})
+                
+                if user.get("role") != "Gerente":
+                    return _resp(400, {"message": f"El usuario '{gerente_correo}' no tiene el rol de Gerente."})
+                
+                # Usar información del usuario existente
+                gerente_nombre = user.get("nombre")
+                gerente_contrasena = user.get("contrasena")
+                
+            except Exception as e:
+                logger.error(f"Error al validar gerente: {str(e)}")
+                return _resp(500, {"message": "Error al validar el gerente", "error": str(e)})
 
-        # Construir item
+        # Verificar tabla
+        _ = table_locales.table_status
+
+        # Construir item (ID siempre generado automáticamente)
         item = {
-            "id": str(uuid.uuid4()),          # SIEMPRE generado
-            "local_id": str(local_id_opt) if local_id_opt else None,  # opcional
+            "id": str(uuid.uuid4()),
             "direccion": direccion,
             "telefono": telefono,
             "hora_apertura": hora_apertura,
@@ -63,14 +82,14 @@ def lambda_handler(event, context):
             "gerente": {
                 "nombre": gerente_nombre,
                 "correo": gerente_correo,
-                "contrasena": gerente_contrasena,  # considera hashear/omitir en prod
+                "contrasena": gerente_contrasena,
             },
         }
 
         # Quitar None para dejar el item limpio
         item = _prune_nones(item)
 
-        table.put_item(Item=item)
+        table_locales.put_item(Item=item)
         return _resp(201, item)
 
     except Exception as e:

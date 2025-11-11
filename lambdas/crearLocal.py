@@ -34,10 +34,49 @@ def lambda_handler(event, context):
         hora_apertura = body.get("hora_apertura")
         hora_finalizacion = body.get("hora_finalizacion")
 
-        gerente = body.get("gerente") or {}
-        gerente_nombre = (gerente.get("nombre") if isinstance(gerente, dict) else None)
-        gerente_correo = (gerente.get("correo") if isinstance(gerente, dict) else None)
-        gerente_contrasena = (gerente.get("contrasena") if isinstance(gerente, dict) else None)
+        gerente = body.get("gerente")
+        if not isinstance(gerente, dict) or "correo" not in gerente:
+            return _resp(400, {"message": "Falta 'gerente.correo' en el body."})
+
+        correo_gerente = str(gerente["correo"]).strip().lower()
+        
+        # Consultar el usuario en la tabla de usuarios
+        try:
+            user_resp = table_usuarios.get_item(Key={"correo": correo_gerente})
+            user = user_resp.get("Item")
+            
+            if not user:
+                return _resp(400, {"message": f"El usuario con correo '{correo_gerente}' no existe."})
+            
+            # Validar que el usuario sea Gerente o Cliente
+            user_role = user.get("role")
+            if user_role not in ["Gerente", "Cliente"]:
+                return _resp(400, {"message": f"El usuario '{correo_gerente}' debe tener rol 'Gerente' o 'Cliente'."})
+            
+            # Si es Gerente, verificar que no tenga ya un local asignado
+            if user_role == "Gerente":
+                # Escanear la tabla de locales para verificar si ya está asignado
+                scan_resp = table_locales.scan(
+                    FilterExpression="gerente.correo = :correo",
+                    ExpressionAttributeValues={":correo": correo_gerente}
+                )
+                if scan_resp.get("Items"):
+                    local_existente = scan_resp["Items"][0]
+                    return _resp(400, {
+                        "message": f"El gerente '{correo_gerente}' ya tiene un local asignado.",
+                        "local_id": local_existente.get("local_id")
+                    })
+            
+            # Construir el objeto gerente completo con datos del usuario
+            gerente_completo = {
+                "nombre": user.get("nombre"),
+                "correo": correo_gerente,
+                "contrasena": user.get("contrasena")
+            }
+            
+        except Exception as e:
+            logger.error(f"Error al validar gerente: {str(e)}")
+            return _resp(500, {"message": "Error al validar el gerente", "error": str(e)})
 
         # Validación mínima
         if not direccion:
@@ -46,28 +85,6 @@ def lambda_handler(event, context):
         # Normalizaciones
         if telefono is not None:
             telefono = str(telefono).strip()
-        if gerente_correo:
-            gerente_correo = str(gerente_correo).strip().lower()
-
-        # Validar que el gerente existe en tabla de usuarios con rol "Gerente"
-        if gerente_correo:
-            try:
-                user_resp = table_usuarios.get_item(Key={"correo": gerente_correo})
-                user = user_resp.get("Item")
-                
-                if not user:
-                    return _resp(400, {"message": f"El usuario con correo '{gerente_correo}' no existe."})
-                
-                if user.get("role") != "Gerente":
-                    return _resp(400, {"message": f"El usuario '{gerente_correo}' no tiene el rol de Gerente."})
-                
-                # Usar información del usuario existente
-                gerente_nombre = user.get("nombre")
-                gerente_contrasena = user.get("contrasena")
-                
-            except Exception as e:
-                logger.error(f"Error al validar gerente: {str(e)}")
-                return _resp(500, {"message": "Error al validar el gerente", "error": str(e)})
 
         # Verificar tabla
         _ = table_locales.table_status
@@ -80,11 +97,7 @@ def lambda_handler(event, context):
             "telefono": telefono,
             "hora_apertura": hora_apertura,
             "hora_finalizacion": hora_finalizacion,
-            "gerente": {
-                "nombre": gerente_nombre,
-                "correo": gerente_correo,
-                "contrasena": gerente_contrasena,
-            },
+            "gerente": gerente_completo,
         }
 
         # Quitar None para dejar el item limpio

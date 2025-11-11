@@ -37,7 +37,7 @@ def lambda_handler(event, context):
         if isinstance(gerente, dict) and "correo" in gerente and gerente["correo"] is not None:
             gerente["correo"] = str(gerente["correo"]).strip().lower()
             
-            # Validar que el nuevo gerente existe y tiene rol "Gerente"
+            # Validar que el nuevo gerente existe y obtener sus datos completos
             try:
                 user_resp = table_usuarios.get_item(Key={"correo": gerente["correo"]})
                 user = user_resp.get("Item")
@@ -45,14 +45,33 @@ def lambda_handler(event, context):
                 if not user:
                     return _resp(400, {"message": f"El usuario con correo '{gerente['correo']}' no existe."})
                 
-                if user.get("role") != "Gerente":
-                    return _resp(400, {"message": f"El usuario '{gerente['correo']}' no tiene el rol de Gerente."})
+                # Validar que el usuario sea Gerente o Cliente
+                user_role = user.get("role")
+                if user_role not in ["Gerente", "Cliente"]:
+                    return _resp(400, {"message": f"El usuario '{gerente['correo']}' debe tener rol 'Gerente' o 'Cliente'."})
                 
-                # Actualizar con información del usuario existente
+                # Si es Gerente, verificar que no tenga ya otro local asignado
+                if user_role == "Gerente":
+                    scan_resp = table_locales.scan(
+                        FilterExpression="gerente.correo = :correo AND local_id <> :current_local",
+                        ExpressionAttributeValues={
+                            ":correo": gerente["correo"],
+                            ":current_local": local_id
+                        }
+                    )
+                    if scan_resp.get("Items"):
+                        local_existente = scan_resp["Items"][0]
+                        return _resp(400, {
+                            "message": f"El gerente '{gerente['correo']}' ya tiene otro local asignado.",
+                            "local_id": local_existente.get("local_id")
+                        })
+                
+                # Construir el objeto gerente completo con datos del usuario
                 gerente["nombre"] = user.get("nombre")
                 gerente["contrasena"] = user.get("contrasena")
                 
             except Exception as e:
+                logger.error(f"Error al validar gerente: {str(e)}")
                 return _resp(500, {"message": "Error al validar el gerente", "error": str(e)})
 
         # Construcción dinámica del UpdateExpression
